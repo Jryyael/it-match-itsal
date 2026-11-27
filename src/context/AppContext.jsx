@@ -266,6 +266,7 @@ export function AppProvider({ children }) {
   const transitionTimerRef = useRef(null);
   const [activeRole, setActiveRole] = useState(() => loadAuthUser()?.roleId || 'estudiante');
   const [activeView, setActiveView] = useState('inicio');
+  const [focusedBankProjectId, setFocusedBankProjectId] = useState(null);
   const [toast, setToast] = useState(null);
 
   // Welcome Modal, Account Switcher, Role Drawer & Guided Tour State
@@ -844,6 +845,10 @@ export function AppProvider({ children }) {
       observacionesAcademia: '',
       observacionesVinculacion: '',
       canalizadoVinculacion: false,
+      estado_proyecto: formData.estado_proyecto || 'Disponible',
+      correoContacto: (formData.correoContacto || '').trim(),
+      whatsappContacto: (formData.whatsappContacto || '').trim(),
+      ubicacionContacto: (formData.ubicacionContacto || '').trim(),
       creadoPorId: currentUser?.id || 'demo-docente',
     };
 
@@ -880,6 +885,27 @@ export function AppProvider({ children }) {
     dbService.updateProyecto(projectId, updates, nextProjects).then(applyCloudFeedback);
   };
 
+  const updateProjectLifecycle = (projectId, estadoProyecto) => {
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+    updateProjectStatus(projectId, { estado_proyecto: estadoProyecto });
+    showToast(
+      `Estado actualizado: ${estadoProyecto}`,
+      'success',
+      `${project.folio} · ${project.titulo}`
+    );
+  };
+
+  const openProjectInBanco = (projectId) => {
+    setFocusedBankProjectId(projectId);
+    setActiveView('banco');
+    setServerNavActive(false);
+    setActiveSurface('app');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const clearFocusedBankProject = () => setFocusedBankProjectId(null);
+
   const resubmitProject = (projectId, formData) => {
     const existing = projects.find((p) => p.id === projectId);
     if (!existing) return null;
@@ -908,6 +934,10 @@ export function AppProvider({ children }) {
       alcances: formData.alcances.trim(),
       limitaciones: formData.limitaciones.trim(),
       observaciones: (formData.observaciones || '').trim(),
+      correoContacto: (formData.correoContacto || '').trim(),
+      whatsappContacto: (formData.whatsappContacto || '').trim(),
+      ubicacionContacto: (formData.ubicacionContacto || '').trim(),
+      estado_proyecto: existing.estado_proyecto || 'Disponible',
       observacionesAcademia: '',
       observacionesVinculacion: '',
       estado: nextEstado,
@@ -988,6 +1018,7 @@ export function AppProvider({ children }) {
     const finalAsesor = asesorAsignado?.trim() || project.asesor;
     updateProjectStatus(projectId, {
       estado: 'Publicado',
+      estado_proyecto: project.estado_proyecto || 'Disponible',
       asesor: finalAsesor,
       observacionesVinculacion:
         observacionesVinculacion || 'Validado por Gestión Tecnológica y Vinculación y División de Estudios Profesionales.',
@@ -1008,6 +1039,7 @@ export function AppProvider({ children }) {
     const finalAsesor = asesorAsignado?.trim() || project.asesor;
     updateProjectStatus(projectId, {
       estado: 'Publicado',
+      estado_proyecto: project.estado_proyecto || 'Disponible',
       asesor: finalAsesor,
       observacionesAcademia:
         observacionesAcademia || 'Aprobado en Reunión de Academia para publicación en el Banco de Proyectos.',
@@ -1228,6 +1260,10 @@ export function AppProvider({ children }) {
         submitApplication,
         createProject,
         resubmitProject,
+        updateProjectLifecycle,
+        focusedBankProjectId,
+        openProjectInBanco,
+        clearFocusedBankProject,
         updateResidentStage,
         approveExternalProject,
         approveInternalProject,

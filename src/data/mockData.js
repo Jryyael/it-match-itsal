@@ -114,6 +114,13 @@ export const AREAS_CONOCIMIENTO = [
 
 export const TIPOS_PROYECTO = ['Básico', 'Aplicado', 'Desarrollo Tecnológico'];
 
+export const PROJECT_LIFECYCLE_STATES = [
+  'Disponible',
+  'En curso',
+  'Concluido',
+  'Cancelado',
+];
+
 export const PERIODOS = [
   'Enero - Junio 2026',
   'Agosto - Diciembre 2026',
@@ -184,6 +191,10 @@ export const INITIAL_PROJECTS = [
     observacionesAcademia: 'Aprobado en reunión ordinaria de academia. Cumple con pertinencia curricular para 2 residentes.',
     observacionesVinculacion: 'Validado como proyecto interno de impacto institucional.',
     canalizadoVinculacion: false,
+    estado_proyecto: 'Disponible',
+    correoContacto: 'alfonso.miguel@salinacruz.tecnm.mx',
+    whatsappContacto: '9711248510',
+    ubicacionContacto: 'Edificio D · Cubículo 4 de TIC (Lun a Vie 10:00-14:00)',
   },
   {
     id: 'proj-002',
@@ -227,6 +238,10 @@ export const INITIAL_PROJECTS = [
     observacionesAcademia: 'Pertinente para líneas de investigación en acuicultura sustentable.',
     observacionesVinculacion: 'Convenio de colaboración vigente verificado por Gestión Tecnológica y Vinculación.',
     canalizadoVinculacion: true,
+    estado_proyecto: 'Disponible',
+    correoContacto: 'humberto.enriquez@salinacruz.tecnm.mx',
+    whatsappContacto: '9711083321',
+    ubicacionContacto: 'Lab. Acuicultura ITSAL · Salina Cruz (Mar y Jue 09:00-13:00)',
   },
   {
     id: 'proj-003',
@@ -263,6 +278,10 @@ export const INITIAL_PROJECTS = [
     observacionesAcademia: 'Aprobado por Academia de Ciencias Económico-Administrativas.',
     observacionesVinculacion: 'Validado por División de Estudios Profesionales y Vinculación.',
     canalizadoVinculacion: false,
+    estado_proyecto: 'Disponible',
+    correoContacto: 'carmen.rios@salinacruz.tecnm.mx',
+    whatsappContacto: '9711194702',
+    ubicacionContacto: 'Edificio B · Academia Económico-Administrativa (11:00-15:00)',
   },
   {
     id: 'proj-004',
@@ -312,6 +331,10 @@ export const INITIAL_PROJECTS = [
     observacionesAcademia: 'Aprobado y asignado en primera sesión de academia.',
     observacionesVinculacion: 'Expediente completo y canalizado a Gestión Tecnológica y Vinculación.',
     canalizadoVinculacion: true,
+    estado_proyecto: 'En curso',
+    correoContacto: 'sergio.villalobos@salinacruz.tecnm.mx',
+    whatsappContacto: '9711356290',
+    ubicacionContacto: 'Taller Metal-Mecánica ITSAL (Lun, Mié, Vie 12:00-16:00)',
   },
   {
     id: 'proj-005',
@@ -348,6 +371,10 @@ export const INITIAL_PROJECTS = [
     observacionesAcademia: '',
     observacionesVinculacion: '',
     canalizadoVinculacion: false,
+    estado_proyecto: 'Disponible',
+    correoContacto: 'eduardo.morales@salinacruz.tecnm.mx',
+    whatsappContacto: '9711427815',
+    ubicacionContacto: 'Lab. Electrónica y Energías Limpias · Planta Baja',
   },
   {
     id: 'proj-006',
@@ -384,6 +411,10 @@ export const INITIAL_PROJECTS = [
     observacionesAcademia: '',
     observacionesVinculacion: '',
     canalizadoVinculacion: false,
+    estado_proyecto: 'Disponible',
+    correoContacto: 'paola.jimenez@salinacruz.tecnm.mx',
+    whatsappContacto: '9711560934',
+    ubicacionContacto: 'Edificio Sistemas y Computación · Sala de Vinculación',
   },
 ];
 

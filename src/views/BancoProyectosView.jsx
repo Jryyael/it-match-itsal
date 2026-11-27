@@ -16,13 +16,15 @@ import { useApp } from '../context/AppContext';
 import {
   CARRERAS_ITSAL,
   HABILIDADES_CATALOGO,
+  PROJECT_LIFECYCLE_STATES,
   TIPOS_PROYECTO,
 } from '../data/mockData';
 import { calcularAfinidadProyecto } from '../utils/aiHelpers';
-import { OriginBadge, StatusBadge } from '../components/StatusBadge';
+import { LifecycleBadge, OriginBadge, StatusBadge } from '../components/StatusBadge';
 import OfficialFormatModal from '../components/OfficialFormatModal';
 import ProjectDetailModal from '../components/ProjectDetailModal';
 import MascotSprite from '../components/MascotSprite';
+import ProjectContactBlock from '../components/ProjectContactBlock';
 
 const TIMELINE_STEPS = [
   'Postulación Enviada',
@@ -81,6 +83,8 @@ export default function BancoProyectosView() {
     demoStudent,
     currentUser,
     submitApplication,
+    focusedBankProjectId,
+    clearFocusedBankProject,
     setMascotContext,
     setMascotHidden,
   } = useApp();
@@ -91,6 +95,7 @@ export default function BancoProyectosView() {
   const [filterTipo, setFilterTipo] = useState('');
   const [filterOrigen, setFilterOrigen] = useState('');
   const [filterEstado, setFilterEstado] = useState('');
+  const [filterLifecycle, setFilterLifecycle] = useState('');
 
   const [aiOpen, setAiOpen] = useState(false);
   const [aiCarrera, setAiCarrera] = useState(demoStudent.carrera);
@@ -167,6 +172,7 @@ export default function BancoProyectosView() {
     return catalogBase
       .map((p) => ({
         ...p,
+        estado_proyecto: p.estado_proyecto || 'Disponible',
         aiMatch: calcularAfinidadProyecto(p, aiCarrera, aiSkills),
       }))
       .filter((p) => {
@@ -174,6 +180,7 @@ export default function BancoProyectosView() {
         if (filterTipo && p.tipoProyecto !== filterTipo) return false;
         if (filterOrigen && p.origen !== filterOrigen) return false;
         if (filterEstado && p.estado !== filterEstado) return false;
+        if (filterLifecycle && (p.estado_proyecto || 'Disponible') !== filterLifecycle) return false;
         if (searchTerm.trim()) {
           const q = searchTerm.toLowerCase();
           const haystack = `${p.folio} ${p.titulo} ${p.departamento} ${p.asesor} ${p.institucion} ${p.perfilRequerido} ${(p.habilidades || []).join(' ')}`.toLowerCase();
@@ -195,6 +202,7 @@ export default function BancoProyectosView() {
     filterTipo,
     filterOrigen,
     filterEstado,
+    filterLifecycle,
     searchTerm,
     sortByAi,
   ]);
@@ -205,7 +213,7 @@ export default function BancoProyectosView() {
   );
 
   const hasActiveFilters = Boolean(
-    searchTerm || filterCarrera || filterTipo || filterOrigen || filterEstado
+    searchTerm || filterCarrera || filterTipo || filterOrigen || filterEstado || filterLifecycle
   );
 
   const openDetailDrawer = (project) => {
@@ -218,9 +226,28 @@ export default function BancoProyectosView() {
       promedio: demoStudent.promedio,
       motivacion: '',
     });
-    setSelectedProject(project);
+    setSelectedProject({
+      ...project,
+      aiMatch: project.aiMatch || calcularAfinidadProyecto(project, aiCarrera, aiSkills),
+    });
     setMascotContext(6, 'Analizando competencias clave y requisitos del proyecto...');
   };
+
+  useEffect(() => {
+    if (!focusedBankProjectId) return;
+    const target = projects.find((p) => p.id === focusedBankProjectId);
+    if (target) {
+      setSubTab('catalogo');
+      setSearchTerm('');
+      setFilterCarrera('');
+      setFilterTipo('');
+      setFilterOrigen('');
+      setFilterEstado('');
+      setFilterLifecycle('');
+      openDetailDrawer(target);
+    }
+    clearFocusedBankProject();
+  }, [focusedBankProjectId, projects]);
 
   const handleApplySubmit = (e) => {
     e.preventDefault();
@@ -436,14 +463,42 @@ export default function BancoProyectosView() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:flex lg:items-center lg:gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:flex lg:items-center lg:gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setFilterLifecycle((prev) => (prev === 'Disponible' ? '' : 'Disponible'))
+                }
+                className={`rounded-lg border px-3 py-2 text-xs font-bold whitespace-nowrap transition ${
+                  filterLifecycle === 'Disponible'
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                }`}
+              >
+                Solo Disponibles
+              </button>
+
+              <select
+                value={filterLifecycle}
+                onChange={(e) => setFilterLifecycle(e.target.value)}
+                aria-label="Filtrar por ciclo de vida"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-[#009FE3] focus:outline-none"
+              >
+                <option value="">Ciclo: Todos</option>
+                {PROJECT_LIFECYCLE_STATES.map((st) => (
+                  <option key={st} value={st}>
+                    {st}
+                  </option>
+                ))}
+              </select>
+
               <select
                 value={filterEstado}
                 onChange={(e) => setFilterEstado(e.target.value)}
                 aria-label="Filtrar por estado"
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-[#009FE3] focus:outline-none"
               >
-                <option value="">Todos ({statusCounts.todos})</option>
+                <option value="">Dictamen: Todos ({statusCounts.todos})</option>
                 <option value="Publicado">Publicados ({statusCounts.Publicado})</option>
                 <option value="En Revisión Académica">
                   En Revisión ({statusCounts['En Revisión Académica']})
@@ -469,7 +524,7 @@ export default function BancoProyectosView() {
                   setMascotContext(8, 'Filtrando oportunidades de residencia por carrera y área...');
                 }}
                 aria-label="Filtrar por carrera"
-                className="lg:max-w-[205px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-[#009FE3] focus:outline-none"
+                className="lg:max-w-[185px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-[#009FE3] focus:outline-none"
               >
                 <option value="">Todas las carreras</option>
                 {CARRERAS_ITSAL.map((c) => (
@@ -503,6 +558,7 @@ export default function BancoProyectosView() {
                   setFilterTipo('');
                   setFilterOrigen('');
                   setFilterEstado('');
+                  setFilterLifecycle('');
                 }}
                 className="shrink-0 text-xs font-bold text-[#009FE3] hover:underline px-1"
               >
@@ -530,12 +586,17 @@ export default function BancoProyectosView() {
                 const ocupadas = project.alumnosAsignados?.length || 0;
                 const disponibles = Math.max(0, project.alumnosRequeridos - ocupadas);
                 const { porcentaje, razones } = project.aiMatch;
+                const isDisponible = (project.estado_proyecto || 'Disponible') === 'Disponible';
 
                 return (
                   <article
                     key={project.id}
                     style={{ animationDelay: `${Math.min(idx * 45, 220)}ms` }}
-                    className="group animate-it-enter flex flex-col justify-between rounded-xl border border-slate-200 bg-white overflow-hidden transition duration-200 ease-out hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                    className={`group animate-it-enter flex flex-col justify-between rounded-xl border bg-white overflow-hidden transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md ${
+                      isDisponible
+                        ? 'border-emerald-200/90 hover:border-emerald-300 ring-1 ring-emerald-500/10'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
                   >
                     <div>
                       <ProjectThumbnail
@@ -546,10 +607,13 @@ export default function BancoProyectosView() {
 
                       <div className="p-5 pb-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <span className="font-mono text-xs font-semibold text-slate-500">
                               {project.folio}
                             </span>
+                            <LifecycleBadge
+                              estadoProyecto={project.estado_proyecto || 'Disponible'}
+                            />
                             <StatusBadge estado={project.estado} />
                           </div>
                           <span className="font-mono text-xs font-bold text-[#009FE3]">
@@ -586,6 +650,8 @@ export default function BancoProyectosView() {
                         <p className="mt-2 text-xs text-slate-500 line-clamp-1">
                           {razones[0]}
                         </p>
+
+                        <ProjectContactBlock project={project} variant="compact" />
                       </div>
                     </div>
 

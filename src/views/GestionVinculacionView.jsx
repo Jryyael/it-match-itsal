@@ -14,9 +14,11 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { OriginBadge, StatusBadge } from '../components/StatusBadge';
+import { PROJECT_LIFECYCLE_STATES } from '../data/mockData';
+import { LifecycleBadge, OriginBadge, StatusBadge } from '../components/StatusBadge';
 import OfficialFormatModal from '../components/OfficialFormatModal';
 import MascotSprite from '../components/MascotSprite';
+import ProjectContactBlock from '../components/ProjectContactBlock';
 
 const BASE_INTERNAL_ADVISORS = [
   'Ing. Alfonso Miguel Escobar',
@@ -37,6 +39,7 @@ export default function GestionVinculacionView() {
     assignStudentToProject,
     rejectApplication,
     channelToVinculacion,
+    updateProjectLifecycle,
   } = useApp();
 
   const [activeFlow, setActiveFlow] = useState('externos');
@@ -490,6 +493,7 @@ export default function GestionVinculacionView() {
                           {project.folio}
                         </span>
                         <StatusBadge estado={project.estado} />
+                        <LifecycleBadge estadoProyecto={project.estado_proyecto || 'Disponible'} />
                         <OriginBadge
                           origen={project.origen}
                           modalidadLugar={project.modalidadLugar}
@@ -555,6 +559,33 @@ export default function GestionVinculacionView() {
                       <p className="text-slate-700 leading-relaxed">{project.planteamiento}</p>
                     </div>
                   </div>
+
+                  <ProjectContactBlock project={project} variant="compact" />
+
+                  {!isPendingValidation && project.estado !== 'Rechazado' && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-[#FAF8F5] px-3.5 py-2.5 text-xs">
+                      <div>
+                        <p className="font-bold text-[#0D2240]">
+                          Ciclo de vida del proyecto
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Actualiza la disponibilidad operativa ante el Banco y SGC
+                        </p>
+                      </div>
+                      <select
+                        value={project.estado_proyecto || 'Disponible'}
+                        onChange={(e) => updateProjectLifecycle(project.id, e.target.value)}
+                        aria-label="Cambiar estado de ciclo de vida del proyecto"
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-[#0D2240] focus:border-[#009FE3] focus:outline-none"
+                      >
+                        {PROJECT_LIFECYCLE_STATES.map((st) => (
+                          <option key={st} value={st}>
+                            {st}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {project.alumnosAsignados?.length > 0 && (
                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5">

@@ -22,7 +22,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { CARRERAS_ITSAL, PERIODOS } from '../data/mockData';
 import { exportProjectsToCSV } from '../utils/exportHelpers';
-import { StatusBadge } from '../components/StatusBadge';
+import { LifecycleBadge, StatusBadge } from '../components/StatusBadge';
 import MascotSprite from '../components/MascotSprite';
 
 const DB_STORAGE_KEY = 'sibap_itsal_db_config_v1';
@@ -119,6 +119,15 @@ export default function IndicadoresSgcView() {
     const publicados = filteredProjects.filter(
       (p) => p.estado === 'Publicado' || p.estado === 'Asignado'
     ).length;
+    const disponibles = filteredProjects.filter(
+      (p) => (p.estado_proyecto || 'Disponible') === 'Disponible'
+    ).length;
+    const enCurso = filteredProjects.filter(
+      (p) => (p.estado_proyecto || 'Disponible') === 'En curso'
+    ).length;
+    const concluidos = filteredProjects.filter(
+      (p) => (p.estado_proyecto || 'Disponible') === 'Concluido'
+    ).length;
 
     return {
       total,
@@ -130,6 +139,9 @@ export default function IndicadoresSgcView() {
       tasaOcupacion,
       canalizados,
       publicados,
+      disponibles,
+      enCurso,
+      concluidos,
       porDepartamento: countByKey(filteredProjects, 'departamento'),
       porArea: countByKey(filteredProjects, 'areaConocimiento'),
       porTipo: countByKey(filteredProjects, 'tipoProyecto'),
@@ -405,13 +417,18 @@ export default function IndicadoresSgcView() {
         <div className="p-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Canalizados SGC
+              Concluidos / SGC
             </span>
             <CheckCircle2 className="h-4 w-4 text-[#009FE3]" />
           </div>
-          <p className="mt-2 font-mono text-3xl font-bold text-slate-900">{metrics.canalizados}</p>
+          <div className="mt-2 flex items-baseline gap-2.5 font-mono">
+            <span className="text-3xl font-bold text-slate-900">{metrics.concluidos}</span>
+            <span className="text-xs font-semibold text-slate-500">
+              concluidos · {metrics.enCurso} en curso
+            </span>
+          </div>
           <p className="mt-1 text-xs text-slate-500">
-            Con notificación y seguimiento formal
+            {metrics.canalizados} canalizado(s) · {metrics.disponibles} disponible(s)
           </p>
         </div>
       </div>
@@ -684,7 +701,10 @@ export default function IndicadoresSgcView() {
                       {ocup} / {p.alumnosRequeridos}
                     </td>
                     <td className="px-5 py-3 whitespace-nowrap">
-                      <StatusBadge estado={p.estado} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadge estado={p.estado} />
+                        <LifecycleBadge estadoProyecto={p.estado_proyecto || 'Disponible'} />
+                      </div>
                     </td>
                   </tr>
                 );
@@ -955,8 +975,10 @@ export default function IndicadoresSgcView() {
 
                 <div className="grid grid-cols-4 gap-3 mb-5">
                   <div className="border border-slate-300 p-2.5 text-center">
-                    <p className="text-[10px] uppercase text-slate-500 font-bold">Total Proyectos</p>
-                    <p className="font-mono text-xl font-extrabold text-[#0D2240]">{metrics.total}</p>
+                    <p className="text-[10px] uppercase text-slate-500 font-bold">Total / Concluidos</p>
+                    <p className="font-mono text-xl font-extrabold text-[#0D2240]">
+                      {metrics.total} / {metrics.concluidos}
+                    </p>
                   </div>
                   <div className="border border-slate-300 p-2.5 text-center">
                     <p className="text-[10px] uppercase text-slate-500 font-bold">Internos / Externos</p>

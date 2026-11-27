@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   AlertTriangle,
+  ArrowUpRight,
   BookOpen,
   Check,
   CheckCircle2,
@@ -31,11 +32,12 @@ import {
   DEPARTAMENTOS_ITSAL,
   HABILIDADES_CATALOGO,
   PERIODOS,
+  PROJECT_LIFECYCLE_STATES,
   TIPOS_PROYECTO,
 } from '../data/mockData';
 import { analizarYMejorarPropuesta, calcularAfinidadProyecto } from '../utils/aiHelpers';
 import OfficialFormatModal from '../components/OfficialFormatModal';
-import { OriginBadge, StatusBadge } from '../components/StatusBadge';
+import { LifecycleBadge, OriginBadge, StatusBadge } from '../components/StatusBadge';
 import MascotSprite from '../components/MascotSprite';
 import DocenteAutocomplete, { findVerifiedDocente } from '../components/DocenteAutocomplete';
 
@@ -65,6 +67,9 @@ const INITIAL_FORM = {
   alcances: '',
   limitaciones: '',
   observaciones: '',
+  correoContacto: '',
+  whatsappContacto: '',
+  ubicacionContacto: '',
   habilidades: ['Desarrollo Web', 'Bases de Datos'],
   imagenUrl: '/projects/proj-001.jpg',
 };
@@ -106,6 +111,9 @@ function buildInitialForm(currentUser) {
       perfilRequerido: currentUser?.carrera || INITIAL_FORM.perfilRequerido,
       alumnosRequeridos: 1,
       asesor: '',
+      correoContacto: currentUser?.correo || '',
+      whatsappContacto: '',
+      ubicacionContacto: 'Campus ITSAL · Salina Cruz',
       estudianteNombre: currentUser?.nombreCompleto || currentUser?.nombre || '',
       estudianteMatricula: currentUser?.matricula || '',
     };
@@ -114,6 +122,10 @@ function buildInitialForm(currentUser) {
     ...INITIAL_FORM,
     modalidadLugar: 'ITSAL',
     asesor: currentUser?.roleId === 'docente' ? currentUser.nombre : '',
+    correoContacto: currentUser?.roleId === 'docente' ? currentUser.correo || '' : '',
+    whatsappContacto: currentUser?.roleId === 'docente' ? '9711248510' : '',
+    ubicacionContacto:
+      currentUser?.roleId === 'docente' ? 'Edificio D · Cubículo 4 de TIC (10:00-14:00)' : '',
     estudianteNombre: '',
     estudianteMatricula: '',
   };
@@ -129,6 +141,8 @@ export default function RegistroPropuestasView() {
     assignStudentToProject,
     rejectApplication,
     updateResidentStage,
+    updateProjectLifecycle,
+    openProjectInBanco,
     navigateView,
     showToast,
     setMascotContext,
@@ -191,7 +205,12 @@ export default function RegistroPropuestasView() {
   const handleStartEditProject = (proj) => {
     setEditingProject(proj);
     setFormData({
-      origen: proj.origen === 'Externo' ? 'Externo' : 'Interno',
+      origen:
+        proj.origen === 'Propuesta de Estudiante'
+          ? 'Propuesta de Estudiante'
+          : proj.origen === 'Externo'
+          ? 'Externo'
+          : 'Interno',
       modalidadLugar: proj.modalidadLugar || 'ITSAL',
       institucion: proj.institucion || '',
       departamento: proj.departamento || INITIAL_FORM.departamento,
@@ -210,10 +229,13 @@ export default function RegistroPropuestasView() {
       alcances: proj.alcances || '',
       limitaciones: proj.limitaciones || '',
       observaciones: proj.observaciones || '',
+      correoContacto: proj.correoContacto || '',
+      whatsappContacto: proj.whatsappContacto || '',
+      ubicacionContacto: proj.ubicacionContacto || '',
       habilidades: proj.habilidades?.length ? proj.habilidades : INITIAL_FORM.habilidades,
       imagenUrl: proj.imagenUrl || '/projects/proj-001.jpg',
-      estudianteNombre: '',
-      estudianteMatricula: '',
+      estudianteNombre: proj.estudianteProponente?.nombre || '',
+      estudianteMatricula: proj.estudianteProponente?.matricula || '',
     });
     setAiReport(null);
     setActiveTab('nueva');
@@ -295,6 +317,9 @@ export default function RegistroPropuestasView() {
         limitaciones:
           'Las pruebas piloto se realizarán en horario diurno dentro de la zona de acceso autorizado.',
         observaciones: 'Proyecto propuesto directamente por el residente en coordinación con enlace externo.',
+        correoContacto: currentUser?.correo || 'l211020074@salinacruz.tecnm.mx',
+        whatsappContacto: '9711124590',
+        ubicacionContacto: 'Terminal Portuaria · Salina Cruz (09:00-14:00)',
         habilidades: ['Desarrollo Web', 'Códigos QR', 'Bases de Datos', 'Logística Portuaria'],
         imagenUrl: '/projects/proj-003.jpg',
         estudianteNombre: currentUser?.nombreCompleto || currentUser?.nombre || '',
@@ -334,6 +359,9 @@ export default function RegistroPropuestasView() {
       limitaciones:
         'Las pruebas en campo se limitan a dos aerogeneradores piloto autorizados por seguridad industrial.',
       observaciones: 'Se requiere equipo de protección personal (EPP) otorgado por la empresa.',
+      correoContacto: 'roberto.morales@salinacruz.tecnm.mx',
+      whatsappContacto: '9711309822',
+      ubicacionContacto: 'Edificio Eléctrica y Electrónica · Cubículo 2 (10:00-13:00)',
       habilidades: ['IoT', 'Energía Renovable', 'Automatización', 'Redes'],
       imagenUrl: '/projects/proj-005.jpg',
       estudianteNombre: '',
@@ -491,9 +519,7 @@ export default function RegistroPropuestasView() {
             <FolderOpen
               className={`h-3.5 w-3.5 ${activeTab === 'mis-proyectos' ? 'text-[#009FE3]' : ''}`}
             />
-            {isStudent
-              ? `Mis Propuestas (${registeredProjects.length})`
-              : 'Mis Proyectos y Postulantes'}
+            Mis Propuestas y Seguimiento ({registeredProjects.length})
             {!isStudent && pendingApplicantsTotal > 0 && (
               <span className="rounded-full bg-[#009FE3] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white leading-none">
                 {pendingApplicantsTotal}
@@ -589,9 +615,23 @@ export default function RegistroPropuestasView() {
                           {resident.carrera} · Proyecto: <strong className="text-slate-700">{project.titulo}</strong>
                         </p>
                       </div>
-                      <span className="shrink-0 rounded-full bg-[#009FE3]/10 px-2.5 py-1 font-mono text-xs font-extrabold text-[#009FE3]">
-                        {progressPct}% avance
-                      </span>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className="rounded-full bg-[#009FE3]/10 px-2.5 py-1 font-mono text-xs font-extrabold text-[#009FE3]">
+                          {progressPct}% avance
+                        </span>
+                        <select
+                          value={project.estado_proyecto || 'Disponible'}
+                          onChange={(e) => updateProjectLifecycle(project.id, e.target.value)}
+                          aria-label="Estado operativo del proyecto"
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-[#0D2240] focus:border-[#009FE3] focus:bg-white focus:outline-none"
+                        >
+                          {PROJECT_LIFECYCLE_STATES.map((st) => (
+                            <option key={st} value={st}>
+                              {st}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -728,9 +768,28 @@ export default function RegistroPropuestasView() {
                 );
                 const ocupadas = proj.alumnosAsignados?.length || 0;
                 const isRejected = proj.estado === 'Rechazado';
+                const isApproved = proj.estado === 'Publicado' || proj.estado === 'Asignado';
+                const isInReview = !isRejected && !isApproved;
+                const semaphore = isApproved
+                  ? {
+                      label: 'Aprobada y publicada',
+                      dot: 'bg-emerald-500',
+                      badge: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+                    }
+                  : isRejected
+                  ? {
+                      label: 'Con observaciones',
+                      dot: 'bg-rose-500',
+                      badge: 'border-rose-200 bg-rose-50 text-rose-800',
+                    }
+                  : {
+                      label: 'En revisión',
+                      dot: 'bg-amber-500',
+                      badge: 'border-amber-200 bg-amber-50 text-amber-900',
+                    };
                 const correctionNote =
-                  proj.observacionesAcademia ||
                   proj.observacionesVinculacion ||
+                  proj.observacionesAcademia ||
                   'Requiere ajustes en planteamiento o alcances.';
                 const isExpanded =
                   expandedProjectIds[proj.id] !== undefined
@@ -748,23 +807,66 @@ export default function RegistroPropuestasView() {
                           <span className="font-mono text-xs font-bold text-[#009FE3]">
                             {proj.folio}
                           </span>
+                          {/* Semáforo de estatus de la propuesta */}
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-extrabold ${semaphore.badge}`}
+                          >
+                            <span className={`h-2 w-2 rounded-full ${semaphore.dot}`} />
+                            {semaphore.label}
+                          </span>
+                          <LifecycleBadge estadoProyecto={proj.estado_proyecto || 'Disponible'} />
                           <OriginBadge origen={proj.origen} modalidadLugar={proj.modalidadLugar} />
-                          <StatusBadge
-                            estado={isRejected ? 'Con Observaciones · Corregir' : proj.estado}
-                          />
                         </div>
                         <h3 className="text-base font-bold text-slate-900 leading-snug">
                           {proj.titulo}
                         </h3>
                         <p className="text-xs text-slate-500">
-                          {proj.institucion} · {proj.perfilRequerido} ·{' '}
-                          <span className="font-mono font-semibold text-slate-700">
-                            {ocupadas}/{proj.alumnosRequeridos} residente(s)
-                          </span>
+                          {proj.institucion} · {proj.perfilRequerido}
                         </p>
+
+                        {/* Métricas de postulación y cupos cuando está aprobada y publicada */}
+                        {isApproved && (
+                          <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50/70 px-2.5 py-0.5 font-mono font-bold text-emerald-800">
+                              <Users className="h-3 w-3 text-emerald-600" />
+                              {projectApps.length} postulado(s) · {ocupadas}/{proj.alumnosRequeridos} cupos ocupados
+                            </span>
+                            {isInReview ? null : (
+                              <span className="text-slate-400 font-medium">
+                                Estado del banco: {proj.estado}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        {!isStudent && (
+                          <select
+                            value={proj.estado_proyecto || 'Disponible'}
+                            onChange={(e) => updateProjectLifecycle(proj.id, e.target.value)}
+                            aria-label="Cambiar estado de ciclo de vida"
+                            className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-[#0D2240] focus:border-[#009FE3] focus:bg-white focus:outline-none"
+                          >
+                            {PROJECT_LIFECYCLE_STATES.map((st) => (
+                              <option key={st} value={st}>
+                                {st}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+
+                        {isApproved && (
+                          <button
+                            type="button"
+                            onClick={() => openProjectInBanco(proj.id)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#009FE3] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#0088C6]"
+                          >
+                            Ver en el Banco
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => setGeneratedProject(proj)}
@@ -801,13 +903,13 @@ export default function RegistroPropuestasView() {
                       </div>
                     </div>
 
-                    {/* Aviso de corrección cuando fue devuelto por Jefatura / Academia */}
-                    {isRejected && !isStudent && (
+                    {/* Aviso de corrección con comentario de Vinculación / Academia (visible para Alumno y Docente) */}
+                    {isRejected && (
                       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50/80 p-3.5">
                         <div className="space-y-0.5 min-w-0 flex-1">
                           <p className="text-[11px] font-extrabold uppercase tracking-wider text-rose-800 flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5" />
-                            Observaciones de Jefatura / Academia para corregir
+                            Comentarios de Vinculación / Academia para corregir
                           </p>
                           <p className="text-xs font-medium text-rose-900">
                             {correctionNote}
@@ -1169,6 +1271,56 @@ export default function RegistroPropuestasView() {
                 placeholder="Nombre del Jefe(a) de Depto."
                 className={INPUT_CLASS}
               />
+            </div>
+          </div>
+
+          {/* Contacto directo del responsable (Opcional) */}
+          <div className="rounded-xl border border-slate-200/80 bg-[#FAF8F5] p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-extrabold text-[#0D2240]">
+                Contacto directo del asesor / responsable (Opcional)
+              </p>
+              <span className="text-[11px] font-medium text-slate-500">
+                Visible en el Banco de Proyectos para dudas y entrevistas
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-700">
+                  Correo institucional
+                </label>
+                <input
+                  type="email"
+                  value={formData.correoContacto}
+                  onChange={(e) => setFormData({ ...formData, correoContacto: e.target.value })}
+                  placeholder="docente@salinacruz.tecnm.mx"
+                  className={`${INPUT_CLASS} bg-white`}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-700">
+                  WhatsApp / Teléfono
+                </label>
+                <input
+                  type="tel"
+                  value={formData.whatsappContacto}
+                  onChange={(e) => setFormData({ ...formData, whatsappContacto: e.target.value })}
+                  placeholder="Ej. 9711248510"
+                  className={`${INPUT_CLASS} bg-white font-mono`}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-700">
+                  Ubicación / Cubículo / Horario
+                </label>
+                <input
+                  type="text"
+                  value={formData.ubicacionContacto}
+                  onChange={(e) => setFormData({ ...formData, ubicacionContacto: e.target.value })}
+                  placeholder="Edificio D · Cubículo 4 (10:00-14:00)"
+                  className={`${INPUT_CLASS} bg-white`}
+                />
+              </div>
             </div>
           </div>
 

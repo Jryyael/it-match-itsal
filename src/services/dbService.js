@@ -111,6 +111,10 @@ function normalizeProjectFields(proj) {
     observacionesAcademia: proj.observacionesAcademia || '',
     observacionesVinculacion: proj.observacionesVinculacion || '',
     canalizadoVinculacion: Boolean(proj.canalizadoVinculacion),
+    estado_proyecto: proj.estado_proyecto || (proj.estado === 'Asignado' ? 'En curso' : 'Disponible'),
+    correoContacto: proj.correoContacto || '',
+    whatsappContacto: proj.whatsappContacto || '',
+    ubicacionContacto: proj.ubicacionContacto || '',
     creadoPorId: proj.creadoPorId,
   };
 }
@@ -148,6 +152,10 @@ function toRemoteProjectRow(proj) {
     observaciones_academia: clean.observacionesAcademia,
     observaciones_vinculacion: clean.observacionesVinculacion,
     canalizado_vinculacion: clean.canalizadoVinculacion,
+    estado_proyecto: clean.estado_proyecto,
+    correo_contacto: clean.correoContacto,
+    whatsapp_contacto: clean.whatsappContacto,
+    ubicacion_contacto: clean.ubicacionContacto,
     creado_por_id: clean.creadoPorId || null,
   };
 }
@@ -185,8 +193,41 @@ function fromRemoteProjectRow(row) {
     observacionesVinculacion:
       row.observacionesVinculacion ?? row.observaciones_vinculacion,
     canalizadoVinculacion: row.canalizadoVinculacion ?? row.canalizado_vinculacion,
+    estado_proyecto: row.estado_proyecto ?? row.estadoProyecto,
+    correoContacto: row.correoContacto ?? row.correo_contacto,
+    whatsappContacto: row.whatsappContacto ?? row.whatsapp_contacto,
+    ubicacionContacto: row.ubicacionContacto ?? row.ubicacion_contacto,
     creadoPorId: row.creadoPorId ?? row.creado_por_id,
   });
+}
+
+const OPTIONAL_EXTENDED_PROJECT_COLS = [
+  'estado_proyecto',
+  'correo_contacto',
+  'whatsapp_contacto',
+  'ubicacion_contacto',
+];
+
+function stripOptionalProjectColumns(payload) {
+  if (Array.isArray(payload)) {
+    return payload.map(stripOptionalProjectColumns);
+  }
+  const clone = { ...payload };
+  OPTIONAL_EXTENDED_PROJECT_COLS.forEach((col) => {
+    delete clone[col];
+  });
+  return clone;
+}
+
+function isMissingColumnError(error) {
+  if (!error) return false;
+  const code = String(error.code || '');
+  const msg = String(error.message || '');
+  return (
+    code === 'PGRST204' ||
+    code === '42703' ||
+    /column|schema cache|does not exist/i.test(msg)
+  );
 }
 
 async function runWithTimeout(promise) {
@@ -218,6 +259,18 @@ async function execSupabaseQuery(queryFn) {
   } catch {
     return { ok: false, fallbackReason: FALLBACK_NOTICE };
   }
+}
+
+async function execProjectMutationSafe(buildQuery, payload) {
+  const firstRes = await execSupabaseQuery((sb) => buildQuery(sb, payload));
+  if (firstRes.ok || !isMissingColumnError(firstRes.error)) {
+    return firstRes;
+  }
+  const safePayload = stripOptionalProjectColumns(payload);
+  if (!Array.isArray(safePayload) && Object.keys(safePayload).length === 0) {
+    return { ok: true, data: null };
+  }
+  return execSupabaseQuery((sb) => buildQuery(sb, safePayload));
 }
 
 export function getProyectosLocal() {
@@ -270,8 +323,9 @@ export async function createProyecto(project, nextProjectsList) {
     return { ok: true, data: normalized, source: 'local' };
   }
 
-  const res = await execSupabaseQuery((sb) =>
-    sb.from('proyectos').insert([toRemoteProjectRow(normalized)]).select()
+  const res = await execProjectMutationSafe(
+    (sb, row) => sb.from('proyectos').insert([row]).select(),
+    toRemoteProjectRow(normalized)
   );
 
   if (!res.ok) {
@@ -327,9 +381,18 @@ export async function updateProyecto(projectId, patch, nextProjectsList) {
     remotePatch.observaciones_vinculacion = patch.observacionesVinculacion;
   if (patch.canalizadoVinculacion !== undefined)
     remotePatch.canalizado_vinculacion = patch.canalizadoVinculacion;
+  if (patch.estado_proyecto !== undefined)
+    remotePatch.estado_proyecto = patch.estado_proyecto;
+  if (patch.correoContacto !== undefined)
+    remotePatch.correo_contacto = patch.correoContacto;
+  if (patch.whatsappContacto !== undefined)
+    remotePatch.whatsapp_contacto = patch.whatsappContacto;
+  if (patch.ubicacionContacto !== undefined)
+    remotePatch.ubicacion_contacto = patch.ubicacionContacto;
 
-  const res = await execSupabaseQuery((sb) =>
-    sb.from('proyectos').update(remotePatch).eq('id', projectId).select()
+  const res = await execProjectMutationSafe(
+    (sb, body) => sb.from('proyectos').update(body).eq('id', projectId).select(),
+    remotePatch
   );
 
   if (!res.ok) {
@@ -512,8 +575,9 @@ export async function syncDemoToCloud({ projects, applications, notifications } 
 
   const [pRes, aRes] = await Promise.all([
     projsToUpsert.length > 0
-      ? execSupabaseQuery((sb) =>
-          sb.from('proyectos').upsert(projsToUpsert, { onConflict: 'id' }).select()
+      ? execProjectMutationSafe(
+          (sb, rows) => sb.from('proyectos').upsert(rows, { onConflict: 'id' }).select(),
+          projsToUpsert
         )
       : Promise.resolve({ ok: true, data: [] }),
     appsToUpsert.length > 0

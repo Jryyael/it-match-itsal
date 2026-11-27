@@ -10,8 +10,9 @@ import {
   X,
 } from 'lucide-react';
 import { CARRERAS_ITSAL } from '../data/mockData';
-import { OriginBadge, StatusBadge } from './StatusBadge';
+import { LifecycleBadge, OriginBadge, StatusBadge } from './StatusBadge';
 import MascotSprite from './MascotSprite';
+import ProjectContactBlock from './ProjectContactBlock';
 
 export default function ProjectDetailModal({
   project,
@@ -141,6 +142,7 @@ export default function ProjectDetailModal({
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-4">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge estado={project.estado} />
+                <LifecycleBadge estadoProyecto={project.estado_proyecto || 'Disponible'} />
                 <OriginBadge
                   origen={project.origen}
                   modalidadLugar={project.modalidadLugar}
@@ -256,6 +258,9 @@ export default function ProjectDetailModal({
                 </dd>
               </div>
             </dl>
+
+            {/* Contacto directo del responsable */}
+            <ProjectContactBlock project={project} variant="full" />
 
             {/* Bloque lateral de contexto: Resultado final para casos concluidos o Afinidad IA para banco activo */}
             {project.estado === 'Concluido / Liberado' ? (
